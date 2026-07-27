@@ -5,3 +5,4 @@ node/
 alembic/
 alembic.ini
 uv.lock
+frontend/
