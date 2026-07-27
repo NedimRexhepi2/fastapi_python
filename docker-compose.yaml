@@ -1,0 +1,26 @@
+services:
+  postgres_db:
+    image: postgres:16-alpine
+    container_name: fastapi_postgres
+    environment:
+      POSTGRES_USER: local_user
+      POSTGRES_PASSWORD: local_password
+      POSTGRES_DB: my_fastapi_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  pgadmin_gui:
+    image: dpage/pgadmin4:latest
+    container_name: fastapi_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: user@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin_password
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres_db
+
+volumes:
+  postgres_data:
