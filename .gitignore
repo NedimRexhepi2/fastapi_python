@@ -2,3 +2,6 @@ __pycache__/
 node_modules/
 node/
 .venv/
+alembic/
+alembic.ini
+uv.lock
