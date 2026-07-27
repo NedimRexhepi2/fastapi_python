@@ -37,11 +37,12 @@ app.include_router(items.router, prefix="/api/items", tags=["items"])
 def hash_password(password: str):
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
+
 def verify_password(plain_password: str, hashed_password: str):
     return bcrypt.checkpw(
-        plain_password.encode("utf-8"), 
-        hashed_password.encode("utf-8")
+        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
     )
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -51,6 +52,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
 def get_current_user(
     request: Request,
     db: Annotated[Session, Depends(get_session)],
@@ -59,7 +61,7 @@ def get_current_user(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials or session expired",
     )
-    
+
     token = request.cookies.get("access_token")
     if not token:
         raise credentials_exception
@@ -82,22 +84,24 @@ def get_current_user(
 
 
 @app.post("/createuser", response_model=UserModel, status_code=status.HTTP_201_CREATED)
-def create_user(user_data: UserModelCreate, db: Annotated[Session, Depends(get_session)]):
+def create_user(
+    user_data: UserModelCreate, db: Annotated[Session, Depends(get_session)]
+):
     stmt = select(User).where(User.username == user_data.username)
     if db.scalars(stmt).first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
+            detail="Username already registered",
         )
-    
+
     new_user = User(
-        username=user_data.username,
-        password=hash_password(user_data.password)
+        username=user_data.username, password=hash_password(user_data.password)
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
+
 
 @app.post("/token")
 def login_access_token(
@@ -126,14 +130,17 @@ def login_access_token(
 
     return {"message": "Login successful"}
 
+
 @app.post("/logout")
 def logout(response: Response):
     response.delete_cookie(key="access_token", samesite="lax")
     return {"message": "Logged out successfully"}
 
+
 @app.get("/users/me", response_model=UserModel)
 def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
     return current_user
+
 
 # GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # if not GEMINI_API_KEY:
@@ -158,24 +165,24 @@ def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
 #             tools=[types.Tool(google_search=types.GoogleSearch())],
 #             temperature=0.3
 #         )
-        
+
 #         response = await client.aio.models.generate_content(
 #             model=MODEL_ID,
 #             contents=payload.message,
 #             config=config
 #         )
-        
+
 #         return AgentResponse(response=response.text)
 
 #     except Exception as e:
 #         # Absolutely zero imports needed for this:
 #         error_info = f"Type: {type(e).__name__} | Message: {str(e)}"
-        
+
 #         # This will print directly to your terminal console
 #         print("\n!!! DETECTED ERROR !!!")
 #         print(error_info)
 #         print("!!!!!!!!!!!!!!!!!!!!!!\n")
-        
+
 #         # This sends the actual error straight back to your API response
 #         raise HTTPException(
 #             status_code=500,
@@ -224,7 +231,7 @@ def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
 #     try:
 #         # 1. Resolve or establish a valid session context
 #         active_session = payload.session_id or "default-test-session"
-        
+
 #         # 2. Re-use existing chat history or initialize a clean one with Google Search enabled
 #         if active_session not in SESSION_REGISTRY:
 #             SESSION_REGISTRY[active_session] = client.chats.create(
@@ -235,13 +242,13 @@ def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
 #                     temperature=0.3
 #                 )
 #             )
-            
+
 #         chat = SESSION_REGISTRY[active_session]
-        
+
 #         # 3. Send the message to the active conversation history track
 #         # Gemini automatically performs the Google Search under the hood and returns the grounded answer!
 #         response = chat.send_message(payload.message)
-        
+
 #         return AgentResponse(session_id=active_session, response=response.text)
 
 #     except Exception as e:
@@ -251,9 +258,6 @@ def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
 #         )
 
 
-
-
-
 # from fastapi import FastAPI
 # from pydantic import BaseModel, Field
 # from typing import List
@@ -261,12 +265,12 @@ def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
 # app = FastAPI(title="Looping Invoice API")
 
 # class Item(BaseModel):
-#     name: str 
-#     price: float 
+#     name: str
+#     price: float
 #     quantity: int
 
 # class OrderRequest(BaseModel):
-#     customer_name: str 
+#     customer_name: str
 #     items: List[Item]
 
 # class InvoiceResponse(BaseModel):
@@ -278,21 +282,21 @@ def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
 
 # @app.post("/calculate-invoice", response_model=InvoiceResponse)
 # async def calculate_invoice(payload: OrderRequest):
-#     TAX_RATE = 0.18 
-    
+#     TAX_RATE = 0.18
+
 #     subtotal = 0.0
 #     total_items_count = 0
-    
+
 #     for item in payload.items:
-  
+
 #         item_total = item.price * item.quantity
-        
+
 #         subtotal += item_total
 #         total_items_count += item.quantity
 
 #     tax_total = subtotal * TAX_RATE
 #     grand_total = subtotal + tax_total
-    
+
 #     return InvoiceResponse(
 #         customer_name=payload.customer_name,
 #         total_items_processed=total_items_count,
