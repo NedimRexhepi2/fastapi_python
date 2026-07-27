@@ -1,8 +1,9 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import SecretStr
 
 class Settings(BaseSettings):
-    DATABASE_URL: str
-    SECRET_KEY: str
+    DATABASE_URL: SecretStr
+    SECRET_KEY: SecretStr
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
 
