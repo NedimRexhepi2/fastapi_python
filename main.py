@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from database import get_session
 from models import UserModel, UserModelCreate
-from routers import items, units, users
+from routers import items, units, users, langchain
 from schemas import User
 from config import settings
 
@@ -31,6 +31,7 @@ app.add_middleware(
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(units.router, prefix="/api/units", tags=["units"])
 app.include_router(items.router, prefix="/api/items", tags=["items"])
+app.include_router(langchain.router, prefix="/api/langchain/bot", tags=["bot"])
 
 
 def hash_password(password: str):

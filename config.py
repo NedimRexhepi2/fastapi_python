@@ -4,6 +4,7 @@ from pydantic import SecretStr, Field
 class Settings(BaseSettings):
     DATABASE_URL: SecretStr = Field(..., validation_alias="DATABASE_URL")
     SECRET_KEY: SecretStr = Field(..., validation_alias="SECRET_KEY")
+    GOOGLE_API_KEY: str
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
 
