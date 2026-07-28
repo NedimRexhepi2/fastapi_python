@@ -1,7 +1,7 @@
 from langchain.chat_models import init_chat_model
 from config import settings
 from fastapi import APIRouter, HTTPException
-import psycopg2
+import psycopg
 from langchain_core.tools import tool
 from langchain.agents import create_agent
 
@@ -15,7 +15,7 @@ def fetch_users_from_db(limit: int = 100) -> str:
     try:
         
         connection_url = settings.DATABASE_URL.get_secret_value()
-        conn = psycopg2.connect(connection_url)
+        conn = psycopg.connect(connection_url)
         cursor = conn.cursor()
         cursor.execute("SELECT id, username, password FROM users LIMIT %s;", (limit,))
         rows = cursor.fetchall()
