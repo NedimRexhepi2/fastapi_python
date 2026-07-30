@@ -11,13 +11,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_session
-from models import UserModel, UserModelCreate
 from routers import items, units, users, langchain
 from schemas import User
 from config import settings
-from models import UserRole
-
-
+from models import get_current_user, RoleChecker, UserModel, UserModelCreate
+from dependecy import UserRolesf
 
 app = FastAPI()
 
@@ -56,46 +54,46 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return jwt.encode(to_encode, settings.SECRET_KEY.get_secret_value(), algorithm=settings.ALGORITHM)
 
 
-def get_current_user(
-    request: Request,
-    db: Annotated[Session, Depends(get_session)],
-):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials or session expired",
-    )
+# def get_current_user(
+#     request: Request,
+#     db: Annotated[Session, Depends(get_session)],
+# ):
+#     credentials_exception = HTTPException(
+#         status_code=status.HTTP_401_UNAUTHORIZED,
+#         detail="Could not validate credentials or session expired",
+#     )
 
-    token = request.cookies.get("access_token")
-    if not token:
-        raise credentials_exception
+#     token = request.cookies.get("access_token")
+#     if not token:
+#         raise credentials_exception
 
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY.get_secret_value(), algorithms=[settings.ALGORITHM])
-        username: Optional[str] = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError as e:
-        print(f"JWT Decode Exception: {e}")
-        raise credentials_exception
+#     try:
+#         payload = jwt.decode(token, settings.SECRET_KEY.get_secret_value(), algorithms=[settings.ALGORITHM])
+#         username: Optional[str] = payload.get("sub")
+#         if username is None:
+#             raise credentials_exception
+#     except JWTError as e:
+#         print(f"JWT Decode Exception: {e}")
+#         raise credentials_exception
 
-    stmt = select(User).where(User.username == username)
-    user = db.scalars(stmt).first()
+#     stmt = select(User).where(User.username == username)
+#     user = db.scalars(stmt).first()
 
-    if user is None:
-        raise credentials_exception
-    return user
+#     if user is None:
+#         raise credentials_exception
+#     return user
 
-class RoleChecker:
-    def __init__(self, allowed_roles: list[UserRole]):
-        self.allowed_roles = allowed_roles
+# class RoleChecker:
+#     def __init__(self, allowed_roles: list[UserRole]):
+#         self.allowed_roles = allowed_roles
 
-    def __call__(self, current_user: Annotated[User, Depends(get_current_user)]) -> User:
-        if current_user.role not in self.allowed_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied",
-            )
-        return current_user
+#     def __call__(self, current_user: Annotated[User, Depends(get_current_user)]) -> User:
+#         if current_user.role not in self.allowed_roles:
+#             raise HTTPException(
+#                 status_code=status.HTTP_403_FORBIDDEN,
+#                 detail="Access denied",
+#             )
+#         return current_user
 
 @app.post("/createuser", response_model=UserModel, status_code=status.HTTP_201_CREATED)
 def create_user(
@@ -109,7 +107,7 @@ def create_user(
         )
 
     new_user = User(
-        username=user_data.username, password=hash_password(user_data.password), role=UserRole.USER
+        username=user_data.username, password=hash_password(user_data.password), role=UserRolesf.USER
     )
     db.add(new_user)
     db.commit()
@@ -157,11 +155,11 @@ def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
 
 @app.get("/user-endpoint")
 def premium_route(
-    current_user: Annotated[User, Depends(RoleChecker([UserRole.USER, UserRole.PREMIUM]))]
+    current_user: Annotated[User, Depends(RoleChecker([UserRolesf.USER, UserRolesf.PREMIUM]))]
 ):
     return {"message": f"Welcome to the zone, {current_user.username}!"}
 @app.get("/premium-endpoint")
 def premium_route(
-    current_user: Annotated[User, Depends(RoleChecker([UserRole.PREMIUM]))]
+    current_user: Annotated[User, Depends(RoleChecker([UserRolesf.PREMIUM]))]
 ):
     return {"message": f"Welcome to the premium zone, {current_user.username}!"}

@@ -1,10 +1,14 @@
 from langchain.chat_models import init_chat_model
 from config import settings
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 import psycopg
 from langchain_core.tools import tool
 from langchain_core.messages import ToolMessage
+from schemas import User
+from models import RoleChecker
+from dependecy import UserRolesf
+from typing import Annotated
 
 router = APIRouter()
 
@@ -39,7 +43,8 @@ class DescriptionRequest(BaseModel):
     prompt: str
 
 @router.post("/description")
-async def get_user_descriptions(request: DescriptionRequest):
+async def get_user_descriptions(request: DescriptionRequest, current_user: Annotated[User, Depends(RoleChecker([UserRolesf.PREMIUM]))]):
+#async def get_user_descriptions(request: DescriptionRequest):    
     try:
         tools = [execute_sql_query]
         model_with_tools = model.bind_tools(tools)
@@ -65,10 +70,8 @@ async def get_user_descriptions(request: DescriptionRequest):
             tool_call = response.tool_calls[0]
             tool_call_id = tool_call["id"]
             
-            # Execute the tool function
             tool_output = execute_sql_query.invoke(tool_call["args"])
             
-            # Use LangChain's ToolMessage to properly bind the result with its matching ID
             final_messages = messages + [
                 response,
                 ToolMessage(content=tool_output, tool_call_id=tool_call_id)
