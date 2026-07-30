@@ -7,3 +7,4 @@ alembic.ini
 uv.lock
 frontend/
 .env
+.env.docker
