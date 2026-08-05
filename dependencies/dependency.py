@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import Annotated
-from dependecies.schemas import User
+from dependencies.schemas import User
 from fastapi import Depends, HTTPException, status
-from dependecies.methods import get_current_user
+from dependencies.methods import get_current_user
 
 class UserRoles(str, Enum):
     USER = "user"

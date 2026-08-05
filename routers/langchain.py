@@ -6,8 +6,8 @@ from langchain_core.tools import tool
 from langchain.chat_models import init_chat_model
 from pydantic import BaseModel
 import psycopg
-from dependecies.schemas import User
-from dependecies.dependecy import UserRoles,RoleChecker
+from dependencies.schemas import User
+from dependencies.dependency import UserRoles,RoleChecker
 from langgraph.graph import StateGraph, MessagesState, START, END
 from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver

@@ -6,11 +6,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from database import get_session
 from routers import users, langchain
-from dependecies.schemas import User
+from dependencies.schemas import User
 from config import settings
-from dependecies.models import UserModel, UserModelCreate
-from dependecies.dependecy import UserRoles, RoleChecker
-from dependecies.methods import hash_password, verify_password, create_access_token,get_current_user
+from dependencies.models import UserModel, UserModelCreate
+from dependencies.dependency import UserRoles, RoleChecker
+from dependencies.methods import hash_password, verify_password, create_access_token,get_current_user
 
 app = FastAPI()
 

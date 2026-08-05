@@ -6,7 +6,7 @@ from typing import Annotated, Optional
 from config import settings
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from dependecies.schemas import User
+from dependencies.schemas import User
 from fastapi import Depends, HTTPException, status, Request
 from database import get_session
 
