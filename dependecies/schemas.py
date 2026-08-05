@@ -1,7 +1,6 @@
 from database import Base
-from sqlalchemy import String, Integer, Float
+from sqlalchemy import String, Integer
 from sqlalchemy.orm import Mapped, mapped_column
-from dependecies.dependecy import UserRoles
 
 
 class User(Base):
@@ -12,4 +11,4 @@ class User(Base):
     )
     username: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String)
-    role: Mapped[str] = mapped_column(String, default=UserRoles.USER, nullable=False)
+    role: Mapped[str] = mapped_column(String, default="user", nullable=False)
