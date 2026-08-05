@@ -2,10 +2,12 @@ services:
   postgres_db:
     image: postgres:16-alpine
     container_name: fastapi_postgres
+    env_file:
+      - .env.docker
     environment:
-      POSTGRES_USER: local_user
-      POSTGRES_PASSWORD: local_password
-      POSTGRES_DB: my_fastapi_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -14,9 +16,11 @@ services:
   pgadmin_gui:
     image: dpage/pgadmin4:latest
     container_name: fastapi_pgadmin
+    env_file:
+      - .env.docker
     environment:
-      PGADMIN_DEFAULT_EMAIL: user@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin_password
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
       - "8080:80"
     depends_on:

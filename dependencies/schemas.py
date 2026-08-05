@@ -11,3 +11,4 @@ class User(Base):
     )
     username: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String)
+    role: Mapped[str] = mapped_column(String, default="user", nullable=False)

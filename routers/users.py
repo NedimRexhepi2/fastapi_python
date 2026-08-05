@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from models import UserModel, UserModelCreate, UserModelEdit
-from schemas import User
+from dependencies.models import UserModel, UserModelCreate, UserModelEdit
+from dependencies.schemas import User
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from typing import Annotated
