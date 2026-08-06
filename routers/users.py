@@ -101,6 +101,18 @@ async def get_users(db: Annotated[Session, Depends(get_session)]):
         )
     return users
 
+@router.get("/user-endpoint")
+def premium_route(
+    current_user: Annotated[User, Depends(RoleChecker([UserRoles.USER, UserRoles.PREMIUM]))]
+):
+    return {"message": f"Welcome to the zone, {current_user.username}!"}
+
+@router.get("/premium-endpoint")
+def premium_route(
+    current_user: Annotated[User, Depends(RoleChecker([UserRoles.PREMIUM]))]
+):
+    return {"message": f"Welcome to the premium zone, {current_user.username}!"}
+
 
 @router.delete("/delete/{user_id}", response_model=UserModel)
 async def delete_user(user_id: int, db: Annotated[Session, Depends(get_session)]):
@@ -123,14 +135,4 @@ async def get_user(user_id: int, db: Annotated[Session, Depends(get_session)]):
         )
     return user_found
 
-@router.get("/user-endpoint")
-def premium_route(
-    current_user: Annotated[User, Depends(RoleChecker([UserRoles.USER, UserRoles.PREMIUM]))]
-):
-    return {"message": f"Welcome to the zone, {current_user.username}!"}
 
-@router.get("/premium-endpoint")
-def premium_route(
-    current_user: Annotated[User, Depends(RoleChecker([UserRoles.PREMIUM]))]
-):
-    return {"message": f"Welcome to the premium zone, {current_user.username}!"}
