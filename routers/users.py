@@ -90,7 +90,7 @@ def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
     return current_user
 
 
-@router.get("", response_model=list[UserModel])
+@router.get("/all", response_model=list[UserModel])
 async def get_users(db: Annotated[Session, Depends(get_session)]):
     result = db.execute(select(User))
     users = result.scalars().all()
