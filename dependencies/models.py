@@ -2,6 +2,7 @@ from pydantic import BaseModel,field_validator,  Field
 import re
 from datetime import date
 from decimal import Decimal
+from typing import Optional
 
 
 class UserModel(BaseModel):
@@ -35,6 +36,7 @@ class UserModelEdit(BaseModel):
 class TransactionCreate(BaseModel):
     to_user_id: int
     amount: Decimal = Field(..., gt=0, description="Amount must be greater than zero")
+    description: Optional[str] = Field(None, description="Optional note or context for the transaction")
 
 
 class TransactionResponse(BaseModel):

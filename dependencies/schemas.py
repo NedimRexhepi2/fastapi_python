@@ -3,6 +3,7 @@ from database import Base
 from decimal import Decimal
 from sqlalchemy import String, Integer, Float, ForeignKey,Date, Numeric,CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from pgvector.sqlalchemy import Vector
 
 
 class User(Base):
@@ -53,6 +54,11 @@ class Transaction(Base):
         CheckConstraint("amount > 0", name="check_transaction_amount_positive"), 
         nullable=False
     )
+
+    description: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
+                                                          
     date: Mapped[date] = mapped_column(Date, nullable=False)
     sender: Mapped["User"] = relationship(
         "User", foreign_keys=[from_user_id], back_populates="sent_transactions"

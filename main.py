@@ -13,6 +13,5 @@ app.add_middleware(
 )
 
 app.include_router(users.router, prefix="/api/users", tags=["users"])
-app.include_router(langchain.router, prefix="/api/langchain/bot", tags=["bot"])
+app.include_router(langchain.router, prefix="/api/langchain", tags=["bot"])
 app.include_router(transaction.router, prefix="/api/transactions", tags=["trans"])
-
