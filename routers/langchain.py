@@ -1,10 +1,13 @@
 import asyncio
+from datetime import datetime
 import json
 import logging
 from typing import Annotated, Optional, AsyncGenerator
 
+from contextlib import asynccontextmanager
+
 from config import settings
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, FastAPI
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.tools import tool
 from langchain.chat_models import init_chat_model
@@ -18,6 +21,9 @@ from pydantic import BaseModel
 from database import get_session
 from dependencies.schemas import User
 from dependencies.dependency import UserRoles, RoleChecker
+from psycopg_pool import AsyncConnectionPool
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from dependencies.schemas import ChatThread
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -35,13 +41,13 @@ embeddings_model = GoogleGenerativeAIEmbeddings(
 
 
 @tool
-def hybrid_transaction_search(query_text: str) -> str:
+async def hybrid_transaction_search(query_text: str) -> str:
     """
     Search transactions using semantic vector similarity and trigram
     fuzzy matching. Returns only the most relevant transactions.
     """
     try:
-        query_vector = embeddings_model.embed_query(query_text)
+        query_vector = await embeddings_model.aembed_query(query_text)
         vector_str = "[" + ",".join(map(str, query_vector)) + "]"
 
         db_generator = get_session()
@@ -184,15 +190,89 @@ workflow.add_edge(START, "agent")
 workflow.add_conditional_edges("agent", should_continue)
 workflow.add_edge("tools", "agent")
 
-compiled_graph = workflow.compile(
-    checkpointer=MemorySaver()
+
+connection_pool = AsyncConnectionPool(
+    conninfo=settings.DATABASE_URL.get_secret_value(),
+    max_size=10,
+    kwargs={"autocommit": True, "prepare_threshold": 0},
+    open=False, # Keep False here so we manage it via lifespan
 )
+
+connection_pool = None
+checkpointer = None
+compiled_graph = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global connection_pool, checkpointer, compiled_graph
+    
+    # 1. Instantiate with open=False to prevent constructor auto-opening warning
+    connection_pool = AsyncConnectionPool(
+        conninfo=settings.DATABASE_URL.get_secret_value(),
+        max_size=10,
+        kwargs={"autocommit": True, "prepare_threshold": 0},
+        open=False, 
+    )
+    
+    # 2. Open it explicitly inside the running event loop context
+    await connection_pool.open()
+    
+    checkpointer = AsyncPostgresSaver(connection_pool)
+    await checkpointer.setup() 
+    
+    compiled_graph = workflow.compile(checkpointer=checkpointer)
+    
+    yield
+    
+    await connection_pool.close()
+# checkpointer = AsyncPostgresSaver(connection_pool)
+# compiled_graph = workflow.compile(checkpointer=checkpointer)
+
+# # --- ADD LIFESPAN TO OPEN/CLOSE THE POOL CLEANLY ---
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     # Open the async postgres connection pool on startup (binds to the running event loop)
+#     await connection_pool.open()
+#     yield
+#     # Close it gracefully on shutdown
+#     await connection_pool.close()
 
 
 class DescriptionRequest(BaseModel):
     prompt: str
     thread_id: Optional[str] = "default_thread"
 
+@router.get("/threads")
+async def get_user_threads(
+    current_user: Annotated[User, Depends(RoleChecker([UserRoles.PREMIUM]))],
+    db = Depends(get_session)
+):
+    try:
+        threads = db.query(ChatThread).filter(ChatThread.user_id == current_user.id).order_by(ChatThread.updated_at.desc()).all()
+        return [{"id": t.id, "title": t.title, "updated_at": t.updated_at} for t in threads]
+    finally:
+        db.close()
+
+@router.get("/threads/{thread_id}/messages")
+async def get_thread_messages(
+    thread_id: str,
+    current_user: Annotated[User, Depends(RoleChecker([UserRoles.PREMIUM]))],
+):
+    config = {"configurable": {"thread_id": thread_id}}
+    state = await compiled_graph.aget_state(config)
+    
+    messages = []
+    raw_messages = state.values.get("messages", [])
+    
+    for msg in raw_messages:
+        if isinstance(msg, HumanMessage):
+            messages.append({"sender": "user", "text": msg.content})
+        elif hasattr(msg, "content") and msg.content:
+            # Filter out system messages or tool calls if desired
+            if msg.type == "ai":
+                messages.append({"sender": "bot", "text": msg.content})
+                
+    return {"messages": messages}
 
 @router.post("/description")
 async def stream_user_descriptions(
@@ -202,6 +282,28 @@ async def stream_user_descriptions(
         Depends(RoleChecker([UserRoles.PREMIUM]))
     ],
 ) -> EventSourceResponse:
+
+    # --- ADD THIS BLOCK TO AUTO-CREATE/UPDATE THREAD METADATA ---
+    db_generator = get_session()
+    db = next(db_generator)
+    try:
+        existing_thread = db.query(ChatThread).filter(ChatThread.id == request.thread_id).first()
+        if not existing_thread:
+            # Generate a clean default title from the first prompt (e.g., first 30 chars)
+            thread_title = request.prompt[:30] + ("..." if len(request.prompt) > 30 else "")
+            new_thread = ChatThread(
+                id=request.thread_id,
+                user_id=current_user.id,
+                title=thread_title
+            )
+            db.add(new_thread)
+            db.commit()
+        else:
+            # Update timestamp so it bumps to the top of the history list
+            existing_thread.updated_at = datetime.utcnow()
+            db.commit()
+    finally:
+        db.close()
 
     async def event_generator() -> AsyncGenerator[dict, None]:
         total_input_tokens = 0
@@ -253,7 +355,6 @@ async def stream_user_descriptions(
 
                         token_text = "".join(parts)
 
-                    # 1. Yield tokens if present
                     if token_text:
                         yield {
                             "event": "token",
@@ -262,7 +363,6 @@ async def stream_user_descriptions(
                             }),
                         }
 
-                    # 2. Extract and aggregate usage metadata independently of token text
                     usage = getattr(chunk, "usage_metadata", None)
                     message_id = getattr(chunk, "id", None)
 
@@ -273,7 +373,7 @@ async def stream_user_descriptions(
                                 total_input_tokens += usage.get("input_tokens", 0)
                                 total_output_tokens += usage.get("output_tokens", 0)
                         else:
-                            # Fallback if ID isn't present on the chunk
+
                             total_input_tokens = usage.get("input_tokens", 0)
                             total_output_tokens = usage.get("output_tokens", 0)
 
@@ -285,7 +385,6 @@ async def stream_user_descriptions(
                         }),
                     }
 
-            # Send final aggregated usage event before closing the stream
             yield {
                 "event": "usage",
                 "data": json.dumps({

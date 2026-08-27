@@ -1,7 +1,7 @@
-from datetime import date
+from datetime import date, datetime
 from database import Base
 from decimal import Decimal
-from sqlalchemy import String, Integer, Float, ForeignKey,Date, Numeric,CheckConstraint
+from sqlalchemy import DateTime, String, Integer, Float, ForeignKey,Date, Numeric,CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pgvector.sqlalchemy import Vector
 
@@ -66,3 +66,11 @@ class Transaction(Base):
     receiver: Mapped["User"] = relationship(
         "User", foreign_keys=[to_user_id], back_populates="received_transactions"
     )
+
+class ChatThread(Base):
+    __tablename__ = "chat_threads"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True) # Can use UUID
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=False, default="New Conversation")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
