@@ -1,5 +1,9 @@
-from pydantic import BaseModel,field_validator
+from pydantic import BaseModel,field_validator,  Field
 import re
+from datetime import date
+from decimal import Decimal
+from typing import Optional
+
 
 class UserModel(BaseModel):
     id: int
@@ -26,3 +30,21 @@ def validate_password(cls, v: str) -> str:
 
 class UserModelEdit(BaseModel):
     username: str
+
+
+
+class TransactionCreate(BaseModel):
+    to_user_id: int
+    amount: Decimal = Field(..., gt=0, description="Amount must be greater than zero")
+    description: Optional[str] = Field(None, description="Optional note or context for the transaction")
+
+
+class TransactionResponse(BaseModel):
+    id: int
+    from_user_id: int
+    to_user_id: int
+    amount: Decimal
+    date: date
+
+    class Config:
+        from_attributes = True
